@@ -1,0 +1,33 @@
+pipeline {
+    agent any
+   
+    stages{
+        stage('Hello') {
+            steps {
+                echo 'Hello World'
+            }
+        }
+    }
+}
+
+ java -jar jenkins.war
+java -jar jenkins.war --httpPort=8081
+
+git config --global user.name "User name"
+git config --global user.email "email”
+git config –list
+git init  (Create a local repository)
+creat a file in folder
+git add .  (Add all files of a repo to staging (Index) area)
+git commit -m " Commit Message"
+git remote add origin https://github.com/code-wit-yash/practical.git (your github repository link)
+git push -u origin master
+git branch newBranch (Create branch)
+git checkout newBranch (Switch between branches in a repository.)
+git config --gloabl core.editor vim
+vi description.txt ( in vi : for editing: press i , for saving: press esc then write :wq
+git add .
+git commit -m " new updates on branch"
+git push origin newBranch
+git checkout master
+git merge newBranch
