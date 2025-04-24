@@ -1,0 +1,472 @@
+index.html 
+
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+
+  <meta charset="UTF-8">
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Simple E-commerce PWA</title>
+
+  <link rel="stylesheet" href="style.css">
+
+</head>
+
+<body>
+
+  <header>
+
+    <h1>E-commerce PWA</h1>
+
+  </header>
+
+  <main>
+
+    <h2>Products</h2>
+
+    <div class="products">
+
+      <div class="product">
+
+        <img src="images/product-1.jpg" alt="Product 1">
+
+        <h3>Product 1</h3>
+
+        <p>$10.00</p>
+
+        <button onclick="addToCart('Product 1', 10)">Add to Cart</button>
+
+      </div>
+
+      <div class="product">
+
+        <img src="images/product-2.jpg" alt="Product 2">
+
+        <h3>Product 2</h3>
+
+        <p>$15.00</p>
+
+        <button onclick="addToCart('Product 2', 15)">Add to Cart</button>
+
+      </div>
+
+    </div>
+
+    <h2>Cart</h2 <ul id="cart-list">
+
+    </ul>
+
+  </main>
+
+  <script src="app.js"></script>
+
+</body>
+
+</html>
+
+
+
+app.js
+
+// 📌 Register Service Worker
+
+if ("serviceWorker" in navigator) {
+
+   window.addEventListener("load", () => {
+
+   navigator.serviceWorker.register("/service-worker.js")
+
+        .then((reg) => console.log("Service Worker Registered!", reg.scope))
+
+        .catch((err) => console.error("Service Worker Registration Failed!", err));
+
+  });
+
+  }
+
+  // 📌 Cart Functionality
+
+  let cart = [];
+
+  function addToCart(name, price) {
+
+  cart.push({ name, price });
+
+   displayCart();
+
+  }
+
+  function displayCart() {
+
+  const cartList = document.getElementById("cart-list");
+
+  cartList.innerHTML = "";
+
+  cart.forEach(item => {
+
+   let li = document.createElement("li");
+
+   li.textContent = `${item.name} - $${item.price}`;
+
+   cartList.appendChild(li);
+
+   });
+
+  }
+
+  // Check if Notifications & Service Worker are supported
+
+  if ("Notification" in window && "serviceWorker" in navigator) {
+
+   Notification.requestPermission().then((permission) => {
+
+   if (permission === "granted") {
+
+  console.log("🔔 Notification permission granted!");
+
+   // Now register service worker AFTER permission is granted
+
+   navigator.serviceWorker.register("/service-worker.js")
+
+  .then((reg) => console.log("✅ Service Worker Registered!", reg.scope))
+
+  .catch((err) => console.error("❌ Service Worker Registration Failed!", err));
+
+  } else {
+
+   console.log("❌ Notification permission denied!");
+
+  }
+
+  });
+
+  } else {
+
+ console.log("❌ Notifications or Service Workers are not supported in this browser.");
+
+  }
+
+
+
+style.css
+
+body {
+
+ font-family: Arial, sans-serif;
+
+ text-align: center;
+
+}
+
+.products {
+
+ display: flex;
+
+ justify-content: center;
+
+ gap: 20px;
+
+}
+
+.product {
+
+ border: 1px solid #ddd;
+
+ padding: 10px;
+
+ width: 150px;
+
+ text-align: center; /* Ensures content inside the product box is centered */
+
+}
+
+.product img {
+
+ width: 100px;
+
+ height: 100px;
+
+ object-fit: cover; /* Prevents image distortion */
+
+}
+
+
+
+
+
+service-worker.js
+
+const CACHE_NAME = "ecommerce-cache-v1";
+
+const urlsToCache = [
+
+  "/",
+
+  "/index.html",
+
+  "/style.css",
+
+  "/app.js",
+
+  "/offline.html",
+
+  "/images/product1.jpg",
+
+  "/images/product2.jpg"
+
+];
+
+// 📌 1️⃣ Install Event - Cache Static Assets
+
+self.addEventListener("install", (event) => {
+
+  event.waitUntil(
+
+    caches.open(CACHE_NAME).then((cache) => {
+
+      return cache.addAll(urlsToCache);
+
+    }).catch((err) => console.error("Cache addAll failed:", err))
+
+  );
+
+});
+
+// 📌 2️⃣ Activate Event - Remove Old Caches
+
+self.addEventListener("activate", (event) => {
+
+  event.waitUntil(
+
+    caches.keys().then((cacheNames) => {
+
+      return Promise.all(
+
+        cacheNames.map((cache) => {
+
+          if (cache !== CACHE_NAME) {
+
+            return caches.delete(cache);
+
+          }
+
+        })
+
+      );
+
+    })
+
+  );
+
+});
+
+// 📌 3️⃣ Fetch Event - Serve Cached Files if Offline
+
+self.addEventListener("fetch", (event) => {
+
+  event.respondWith(
+
+    caches.match(event.request).then((response) => {
+
+      return response || fetch(event.request);
+
+    }).catch(() => {
+
+      return caches.match("/offline.html"); // Fallback for offline
+
+    })
+
+  );
+
+});
+
+// 📌 4️⃣ Sync Event - Sync Orders When Online
+
+self.addEventListener("sync", (event) => {
+
+  if (event.tag === "sync-orders") {
+
+    event.waitUntil(
+
+      sendPendingOrders().then(() => {
+
+        console.log("Orders successfully synced!");
+
+      })
+
+    );
+
+  }
+
+});
+
+// Mock function to simulate sending offline orders
+
+function sendPendingOrders() {
+
+  return new Promise((resolve) => {
+
+    setTimeout(() => {
+
+      console.log("✅ Pending orders sent to the server!");
+
+      resolve();
+
+    }, 3000);
+
+  });
+
+}
+
+// 📌 5️⃣ Push Notification Event - Show Notifications
+
+self.addEventListener("push", (event) => {
+
+  const options = {
+
+    body: "🔥 Big Sale! 50% Off on All Items!",
+
+    icon: "/images/product1.jpg",
+
+    badge: "/images/product2.jpg",
+
+    vibrate: [200, 100, 200],
+
+    actions: [
+
+      { action: "shop", title: "🛒 Shop Now" },
+
+      { action: "close", title: "❌ Dismiss" }
+
+    ]
+
+  };
+
+  event.waitUntil(
+
+    self.registration.showNotification("E-commerce PWA", options)
+
+  );
+
+});
+
+
+
+offline.html
+
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+
+  <meta charset="UTF-8">
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Offline</title>
+
+</head>
+
+<body>
+
+  <h1>You are offline</h1>
+
+  <p>Please check your internet connection.</p>
+
+</body>
+
+</html>
+
+
+
+product-1.jpg
+
+product-2.jpg
+
+
+
+Thoery
+
+steps
+
+Create the Project Structure
+
+Include index.html, app.js, style.css, images/, and service-worker.js.
+
+
+
+Build E-commerce Functionality
+
+Add products and cart logic in HTML & JS, using addToCart() and displayCart().
+
+
+
+Implement PWA Features
+
+Register a Service Worker and request Notification permission in app.js.
+
+
+
+Create Service Worker
+
+Cache key files and handle offline access in service-worker.js.
+
+
+
+Style the App
+
+Use style.css to design the layout and product UI.
+
+
+
+Initialize Git Repository & Push to GitHub
+
+
+
+Go to GitHub → Settings → Pages
+
+
+
+Set source to main branch /root
+
+
+
+Access your app via https://<username>.github.io/<repo-name>/
+
+
+
+
+
+defn
+
+Progressive Web App (PWA)
+
+A PWA is a type of web application that offers features similar to native apps. It can be installed on devices, works offline, and loads quickly. By converting this e-commerce site into a PWA, the app provides a better user experience, especially on mobile devices and slow networks.
+
+Service Worker
+
+A service worker is a background script that runs separately from the web page. It allows the app to cache files and serve them when the user is offline. In this project, the service worker caches HTML, CSS, JavaScript, and images so the app continues to function without an internet connection.
+
+Web Notifications API
+
+The Notifications API allows the app to send messages to the user through the browser. In this project, the API is used to request permission from the user to show notifications, making it possible to alert users of actions like successful cart updates or special offers.
+
+GitHub Pages (SSL-enabled Hosting)
+
+GitHub Pages is a free static hosting platform that serves web content over HTTPS, providing a secure connection. It is used to deploy the e-commerce app so it can be accessed online with an SSL certificate, ensuring user trust and data security.
+
+
+
+
+
+
+
+
+
+
+
